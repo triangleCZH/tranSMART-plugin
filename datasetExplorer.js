@@ -727,7 +727,7 @@ Ext.Ajax.request({
 	l3bbar = new Ext.Toolbar({
             id: 'l3bbar',
             title: 'L3Info',
-            items: [        {
+            items: [       /* {
             // xtype: 'button', // default for Toolbars, same as 'tbbutton'
             text: 'Export To Excel',
             listeners: {
@@ -743,7 +743,7 @@ Ext.Ajax.request({
                             jQuery(a).remove();             
                 }
             }
-            },
+            },*/
 	    '    Fill in the study name:  ',
 	    {
 		id: 'studyNameField',
@@ -821,7 +821,7 @@ Ext.Ajax.request({
             //getSummaryStatisticsComplete(result);
             l3PluginPanel.body.unmask();
 	    //Ext.MessageBox.alert('success', 'To view the track in genome browser, click genome browser -> \'+\' sign -> Defaults -> \'+\' sign -> paste in \'http://localhost:48080/hubDirectory/hub.txt\'');
-	    Ext.MessageBox.alert('success', 'track link: http://localhost:48080/hubDirectory/hub.txt');
+	    Ext.MessageBox.alert('success', 'add the track link: http://localhost:48080/hubDirectory/hub.txt to genome browser');
             console.error("Import to genome browser finished");
             console.error("This is the passed params");
             console.error(JSON.stringify({
@@ -846,6 +846,30 @@ Ext.Ajax.request({
 		}
 
 			    }
+	    },
+	    {
+		
+            // xtype: 'button', // default for Toolbars, same as 'tbbutton'
+            text: 'Export To Excel',
+            listeners: {
+                click: function () {
+                            //console.error(exportTable);
+                            var a = document.createElement('a');
+                            a.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'
+                                + Base64.encode(exportTable);
+                            a.setAttribute('type', 'hidden');
+			    var studyName = Ext.getCmp('studyNameField').getValue();
+        		    if (studyName.length == 0) {
+                                a.download = 'Variants.xls';
+			    } else {
+				a.download = studyName.concat('.xls');
+			    }
+                            document.body.appendChild(a);
+                            a.click();
+                            jQuery(a).remove();             
+                }
+            }
+            
 	    }
  ]
         });
