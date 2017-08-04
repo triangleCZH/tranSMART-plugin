@@ -771,7 +771,7 @@ Ext.Ajax.request({
 	l3PluginPanel.body.mask("Importing Samples..", 'x-mask-loading');
 	console.error("Ouch! you want to import!");
         Ext.Ajax.request({
-        url: "http://localhost:40083/transmart/import", ///pageInfo.basePath+"/chart/basicStatistics",
+        url: "http://localhost:40083/transmart/import_gene_mutation",//import", ///pageInfo.basePath+"/chart/basicStatistics",
         method: 'POST',
         success: function (result, request) {
             //getSummaryStatisticsComplete(result);
@@ -874,6 +874,34 @@ Ext.Ajax.request({
  ]
         });
 
+    l3ttbar = new Ext.Toolbar({
+            id: 'l3ttbar',
+            title: 'L3Info',
+            items: ['Age range:  ',
+	          {
+            id: 'ageLeft',
+            xtype: 'textfield',
+            name: 'ageLeft',
+            emptyText: '30',
+            //fieldLabel: 'chr'
+            //allowBlank: false
+        	},
+		  ' <= age < ',
+        {
+            id: 'ageRight',
+            xtype: 'textfield',
+            name: 'ageRight',
+            emptyText: '40',
+            //fieldLabel: 'chr'
+            //allowBlank: false
+        },
+	{
+           xtype: 'button',
+           text: 'submit',
+           handler: function() {
+	   }
+        }   ]
+        }); 
     l3PluginPanel = new Ext.Panel({
         id: 'l3PluginPanel',
         title: 'l3Plugin',
@@ -881,14 +909,14 @@ Ext.Ajax.request({
         split: true,
         height: 90,
         layout: 'fit',
-        html: '<h1>Step 1: drag the filter concept into Comparison block<br></h1><h1>Step 2: enter the chr, from, to index and submit<br></h1><h1>Step 3: Import to Nevigate Terms with a study name, or import to genome browser with a track name</h1>',
-	tbar: l3tbar,
+        html: '<h1>Step 1: drag the filter concept into Comparison block<br></h1><h1>Step 2: enter the chr, from, to index and submit<br></h1><h1>Step 3: Import to Nevigate Terms with a study name, import to genome browser with a track name, or export to excel</h1>',
+	tbar: l3ttbar,
         collapsible: true,
         listeners: {
             activate: function (p) {
                 if (isSubsetQueriesChanged(p.subsetQueries)) {
                     p.body.mask("Loading... l3plugin", 'x-mask-loading');
-		    updateL3Panel('<h1>Step 1: drag the filter concept into Comparison block<br></h1><h1>Step 2: enter the chr, from, to index and submit<br></h1><h1>Step 3: Import to Nevigate Terms with a study name, or import to genome browser with a track name</h1>',false)
+		    updateL3Panel('<h1>Step 1: drag the filter concept into Comparison block<br></h1><h1>Step 2: enter the chr, from, to index and submit<br></h1><h1>Step 3: Import to Nevigate Terms with a study name, import to genome browser with a track name, or export to excel</h1>',false)
                     runAllQueries(getL3Statistics, p);
                     activateTabResults();
                     onWindowResize();
@@ -904,7 +932,9 @@ Ext.Ajax.request({
                 }
             }*/
 	'render': function() {
+	    l3tbar.render(l3PluginPanel.tbar);
 	    l3bbar.render(l3PluginPanel.tbar);
+	    //l3ttbar.render(l3PluginPanel.tbar);
 	}
         },
         autoScroll: true,
