@@ -618,6 +618,8 @@ Ext.onReady(function () {
 	variantArray = [];
 	exportTable = "l3 bioinformatics";
 	sampleTable = '';
+	filterParamsArray = []; //for sample search to store what is dragged, wait for input filter range
+	tmpTable = ""; //store every time to reuse for displaying table
 	//sampleJSON = []; //to store json received from sample search
 	//variantJSON = []; //to store json received from variant search
 	//studyName = ""; //to store the study name
@@ -710,13 +712,13 @@ Ext.Ajax.request({
         //contentType: "application/json", //headers: {"Content-Type" : "application/json"},//{'X-Requested-With' : 'XMLHttpRequest'},
         timeout: '300000',
         //dataType: "json",
-        jsonData: variant_search_param/*JSON.stringify({
+        jsonData: JSON.stringify({
             "chr": chr.toString(),
             "start": from.toString(),
             "end": to.toString(),
             "alt": "C",
             "samples": sampleArray
-        })*/ // or a URL encoded string
+        }) // or a URL encoded string
     });
 		} //end of if condition
        else {Ext.MessageBox.alert('Invalid input', 'Please make sure you have enter chr, from and to fields');}
@@ -753,10 +755,13 @@ Ext.Ajax.request({
 		allowBlank: true
 	    },
             {
-		text: 'Import to Navigate Term',
+		text: 'Import Gene Mutation',
 		listeners: {
 			click: function () {
 	var studyName = Ext.getCmp('studyNameField').getValue();
+        var chr = Ext.getCmp('chrField').getValue();
+        var from = Ext.getCmp('fromField').getValue();
+        var to = Ext.getCmp('toField').getValue();
 	if (studyName.length == 0) {
 	    console.error("You must enter a dinstinct study name")
             Ext.MessageBox.alert('Invalid input', 'You should enter a dinstinct and non empty study name');
@@ -767,9 +772,16 @@ Ext.Ajax.request({
 	    console.error("Though samples found, no available variants, import procedure stopped");
             Ext.MessageBox.alert('Invalid input', 'No available variants, import procedure stopped');
 	} else {		
-	console.error(studyName);
+	console.error("This is the params for import gene");
 	l3PluginPanel.body.mask("Importing Samples..", 'x-mask-loading');
 	console.error("Ouch! you want to import!");
+	console.error(JSON.stringify({
+        "study_name" : studyName,
+        "chr" : chr,
+        "start" : from,
+        "end" : to,
+        "samples" : filterParamsArray
+        }));
         Ext.Ajax.request({
         url: "http://localhost:40083/transmart/import_gene_mutation",//import", ///pageInfo.basePath+"/chart/basicStatistics",
         method: 'POST',
@@ -778,10 +790,6 @@ Ext.Ajax.request({
             l3PluginPanel.body.unmask();
 	    console.error("Sample import finish, Variants import starts");
 	    console.error("This is the passed params");
-	    console.error(JSON.stringify({
-        "study_name" : studyName,
-        sample_search_param: sample_search_param,
-        variant_search_param: variant_search_param}));
 	    Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples/variants on the left, click no to stay in the page.', function(e) {
 		if (e == 'yes') location.reload()});//importL3Variants (); //l3todo: write this import function
         },
@@ -793,19 +801,83 @@ Ext.Ajax.request({
         timeout: '300000',
         jsonData: JSON.stringify({
 	"study_name" : studyName,
-	sample_search_param: sample_search_param,
-	variant_search_param: variant_search_param}) 
-        });
-       }
-					   }
+	"chr" : chr,
+	"start" : from,
+	"end" : to,
+	"samples" : filterParamsArray
+        })
+       });
+	}				   }
 			   }
 	    },
+//start of import vcf
+{   
+                text: 'Import Gene Variants',
+                listeners: {
+                        click: function () {
+        var studyName = Ext.getCmp('studyNameField').getValue();
+        var chr = Ext.getCmp('chrField').getValue();
+        var from = Ext.getCmp('fromField').getValue();
+        var to = Ext.getCmp('toField').getValue();
+        if (studyName.length == 0) {
+            console.error("You must enter a dinstinct study name")
+            Ext.MessageBox.alert('Invalid input', 'You should enter a dinstinct and non empty study name');  
+        } else if (sampleArray.length == 0) {
+            console.error("No available samples, import procedure stopped");
+            Ext.MessageBox.alert('Invalid input', 'No available samples, import procedure stopped.');
+        } else if (variantArray.length == 0) {
+            console.error("Though samples found, no available variants, import procedure stopped");
+            Ext.MessageBox.alert('Invalid input', 'No available variants, import procedure stopped');
+        } else {                
+        console.error("This is the params for import gene");
+        l3PluginPanel.body.mask("Importing Samples..", 'x-mask-loading');
+        console.error("Ouch! you want to import!");
+        console.error(JSON.stringify({
+        "study_name" : studyName,
+        "chr" : chr,
+        "start" : from,
+        "end" : to, 
+        "samples" : filterParamsArray
+        }));
+        Ext.Ajax.request({
+        url: "http://localhost:40083/transmart/import_vcf", ///pageInfo.basePath+"/chart/basicStatistics",
+        method: 'POST',
+        success: function (result, request) {
+            //getSummaryStatisticsComplete(result);
+            l3PluginPanel.body.unmask();
+            console.error("Sample import finish, Variants import starts");
+            console.error("This is the passed params");
+            Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples/variants on the left, click no to stay in the page.', function(e) {
+                if (e == 'yes') location.reload()});//importL3Variants (); //l3todo: write this import function
+        },
+        failure: function (result, request) {
+            //getSummaryStatisticsComplete(result);
+            console.error("Cannot import the samples to nevigate, so will stop import variants as well");        
+            l3PluginPanel.body.unmask();
+        },
+        timeout: '300000',
+        jsonData: JSON.stringify({
+        "study_name" : studyName,
+        "chr" : chr,
+        "start" : from,
+        "end" : to, 
+        "samples" : filterParamsArray
+        })
+       });                                 
+        }                                  }
+                           }
+            }
+//end of import vcf
+,
 	    {
 		text: 'Import to genome browser',
 		listeners: {
 		click: function() {
 		console.error("import genome button clicked");
         var studyName = Ext.getCmp('studyNameField').getValue();
+        var chr = Ext.getCmp('chrField').getValue();
+        var from = Ext.getCmp('fromField').getValue();
+        var to = Ext.getCmp('toField').getValue();
         if (studyName.length == 0) {
             console.error("You must enter a dinstinct study name")
             Ext.MessageBox.alert('Invalid input', 'You should enter a dinstinct and non empty track name');
@@ -814,6 +886,13 @@ Ext.Ajax.request({
 		Ext.MessageBox.alert('Invalid input','You need to have the vcf file to import');
 		} else {
 		console.error("You want to import to browswer");
+	console.error(JSON.stringify({
+        "study_name" : studyName,
+        "chr" : chr,
+        "start" : from,
+        "end" : to,
+        "samples" : filterParamsArray
+        }));
         Ext.Ajax.request({
         url: "http://localhost:40083/transmart/add_track", ///pageInfo.basePath+"/chart/basicStatistics",
         method: 'POST',
@@ -821,13 +900,8 @@ Ext.Ajax.request({
             //getSummaryStatisticsComplete(result);
             l3PluginPanel.body.unmask();
 	    //Ext.MessageBox.alert('success', 'To view the track in genome browser, click genome browser -> \'+\' sign -> Defaults -> \'+\' sign -> paste in \'http://localhost:48080/hubDirectory/hub.txt\'');
-	    Ext.MessageBox.alert('success', 'add the track link: http://localhost:48080/hubDirectory/hub.txt to genome browser');
+	    Ext.MessageBox.alert('success', 'add the track link: http://localhost:58080/hubDirectory/hub.txt to genome browser');
             console.error("Import to genome browser finished");
-            console.error("This is the passed params");
-            console.error(JSON.stringify({
-        "study_name" : studyName,
-        sample_search_param: sample_search_param,
-        variant_search_param: variant_search_param}));
             //location.reload();//importL3Variants (); //l3todo: write this import function
         },
         failure: function (result, request) {
@@ -837,10 +911,12 @@ Ext.Ajax.request({
         },
         timeout: '300000',
         jsonData: JSON.stringify({
-        "study_name" : studyName, //actually useless
-        sample_search_param: sample_search_param, //actually useless
-        variant_search_param: variant_search_param})
-        });
+        "study_name" : studyName,
+        "chr" : chr,
+        "start" : from,
+        "end" : to, 
+        "samples" : filterParamsArray})
+	});
 		}
 		
 		}
@@ -882,7 +958,7 @@ Ext.Ajax.request({
             id: 'ageLeft',
             xtype: 'textfield',
             name: 'ageLeft',
-            emptyText: '30',
+            //emptyText: '30',
             //fieldLabel: 'chr'
             //allowBlank: false
         	},
@@ -891,14 +967,70 @@ Ext.Ajax.request({
             id: 'ageRight',
             xtype: 'textfield',
             name: 'ageRight',
-            emptyText: '40',
+            //emptyText: '40',
             //fieldLabel: 'chr'
             //allowBlank: false
         },
 	{
            xtype: 'button',
            text: 'submit',
-           handler: function() {
+           listeners: {
+		click: function() {
+//start of click function
+    console.error("you want to upload the group of data!");
+    var ageLeft = Ext.getCmp('ageLeft').getValue();
+    var ageRight = Ext.getCmp('ageRight').getValue();
+    var sampleFilters = [];
+    sampleArray = [];
+    if (ageLeft.length != 0) {
+	sampleFilters.push(["age", ">=".concat(ageLeft)]);
+    }
+    if (ageRight.length != 0) {
+        sampleFilters.push(["age", "<".concat(ageRight)]);
+    }
+        console.error("This is sample search param");
+    Ext.Ajax.request({
+        url: "http://localhost:40083/transmart/sample_search",
+        method: 'POST',
+        success: function (result, request) {
+		tmpTable = sampleTable;
+            if ("undefined" === typeof result ) {
+                tmpTable += '<tr><td colspan="10">Successful connection to result/search but no result return</td></tr></table></body>';
+                exportTable = tmpTable;
+                updateL3Panel(tmpTable, false);
+            } else {
+		console.error("This is the result from sampe search");
+		console.error(result);
+                    var obj = jQuery.parseJSON(result.responseText);
+                    for (i = 0; i < obj.length; i++) {
+                            sampleArray.push(obj[i].id);
+                     }
+    //result parsed
+    console.error("this is the sample array after success");
+    console.error(sampleArray);
+                    tmpTable += '<h1>this is the sample size after filter: ' + sampleArray.length.toString() + ' </h1>';
+    //pretent that I update the table with the given obj results
+    exportTable = tmpTable;
+    updateL3Panel(tmpTable,false);}
+        },
+        failure: function (result, request) { //the given result from the server is already in html form!
+            tmpTable = sampleTable;
+            //getSummaryStatisticsComplete(result);
+	    tmpTable += '<tr><td colspan="10">CGDB API sample/search connection failure</td></tr></table></body>';
+            updateL3Panel(tmpTable, false);
+            //l3PluginPanel.body.unmask();
+        },
+        //contentType: "application/json", //headers: {"Content-Type" : "application/json"},//{'X-Requested-With' : 'XMLHttpRequest'},
+        timeout: '300000',
+        //dataType: "json",
+        jsonData: JSON.stringify({
+        "samples" : filterParamsArray,
+        "filters" : sampleFilters
+    })//sample_search_param
+    })
+
+//end of click function
+	   }
 	   }
         }   ]
         }); 
@@ -3285,14 +3417,22 @@ function getL3Statistics() {
 function storeL3oaded(jsonStore, rows, paramsObject) {
     /*var sampleRows = gridL3store.reader.jsonData.rows;
     }*/
-    var filterParamsArray = [];
+    tmpTable = "";
+    filterParamsArray = [];
     sampleArray = [];
     variantArray = [];
     sample_search_param = [];
     variant_search_param = [];
     var fields = gridL3store.reader.meta.fields;
     //console.error(fields);
-    
+    var sampleId = gridL3store.reader.jsonData.rows;
+    for (i = 0; i < sampleId.length; i++) {
+	filterParamsArray.push(sampleId[i].patient);
+    }
+    console.error("This is the sample array after dragging");
+    console.error(filterParamsArray);
+    updateL3Panel("<h1>this is the sample size before filter: ".concat(sampleId.length.toString()).concat("</h1>"), false);
+    /*
     for (i = 0; i < fields.length; i++) {
 	if (fields[i].header.indexOf("<=age<") !== -1) { //detect age filter
 	    //console.error(fields[i].header);
@@ -3321,19 +3461,17 @@ function storeL3oaded(jsonStore, rows, paramsObject) {
         }
 	//console.error(fields[i].header.concat(" is not"));
     }
+    */
     //console.error(filterParamsArray);
 /*l3test: start of filter request*/
-    var tmpTable = sampleTable;
+    /*var tmpTable = sampleTable;
     sample_search_param = JSON.stringify({
             "filter": filterParamsArray
-    });
-    Ext.Ajax.request({
+    });*/
+    /*Ext.Ajax.request({
         url: "http://localhost:40083/sample/search",
         method: 'POST',
         success: function (result, request) {
-	    /*sample_search_param = JSON.stringify({
-            "filter": filterParamsArray
-        });*/
 	console.error("This is sample search param");
 	console.error(sample_search_param);
             if ("undefined" === typeof result ) {
@@ -3361,10 +3499,8 @@ function storeL3oaded(jsonStore, rows, paramsObject) {
         //contentType: "application/json", //headers: {"Content-Type" : "application/json"},//{'X-Requested-With' : 'XMLHttpRequest'},
         timeout: '300000',
         //dataType: "json",
-        jsonData: sample_search_param /*JSON.stringify({
-            "filter": filterParamsArray
-        })*/ // or a URL encoded string
-    })
+        jsonData: sample_search_param 
+    })*/
 }
 /*
 function fromL3Sample(result) {
