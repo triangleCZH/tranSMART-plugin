@@ -1,3 +1,27 @@
+function disableL3(exportButton) {
+    console.error("Disabling everything now");
+    Ext.getCmp('filterButton').disable();
+    Ext.getCmp('chrButton').disable();
+    Ext.getCmp('vcfButton').disable();
+    Ext.getCmp('browserButton').disable();
+    Ext.getCmp('mutationButton').disable();
+    if (exportButton) {
+	Ext.getCmp('excelButton').disable();
+    }
+}
+
+function enableL3(exportButton) {
+    console.error("Enabling everything now");
+    Ext.getCmp('filterButton').enable();
+    Ext.getCmp('chrButton').enable();
+    Ext.getCmp('vcfButton').enable();
+    Ext.getCmp('browserButton').enable();
+    Ext.getCmp('mutationButton').enable();
+    if (exportButton) {
+	Ext.getCmp('excelButton').enable();
+    }
+}
+
 String.prototype.trim = function() {
     return this.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
 }
@@ -617,14 +641,11 @@ Ext.onReady(function () {
 	sampleArray = [];
 	variantArray = [];
 	exportTable = "l3 bioinformatics";
-	sampleTable = '';
 	filterParamsArray = []; //for sample search to store what is dragged, wait for input filter range
 	tmpTable = ""; //store every time to reuse for displaying table
 	//sampleJSON = []; //to store json received from sample search
 	//variantJSON = []; //to store json received from variant search
 	//studyName = ""; //to store the study name
-	sample_search_param = []; //tmp hard code
-	variant_search_param = []; //temp hard code
 	variantTable = '<head><style>.beta table, .beta th, .beta td {border: 1px solid black;border-collapse: collapse;} .beta th, .beta td {padding: 5px;} .beta th { text-align: left; }</style></head><body><table style="width:100%" class="beta"><tr><th>chr</th><th>pos</th><th>ref</th><th>alt</th><th>homo count</th><th>sample count</th><th>sample covered</th><th>af</th><th>annotation consequence</th><th>annotation aminoAcidChange</th></tr>';
         l3tbar = new Ext.Toolbar({
             id: 'l3tbar',
@@ -663,11 +684,11 @@ Ext.onReady(function () {
         },
         {xtype: 'tbspacer', width: 200},
         {
+	   id: 'chrButton',
            xtype: 'button',
            text: 'submit',
            handler: function() {
 		variantArray = [];
-		variant_search_params = [];
                var chr = Ext.getCmp('chrField').getValue();
                var from = Ext.getCmp('fromField').getValue();
                var to = Ext.getCmp('toField').getValue();
@@ -676,13 +697,7 @@ Ext.onReady(function () {
 			Ext.MessageBox.alert('Invalid input','Please make sure you have use a valid filter and get the sample results');
 		} else if(chr.length != 0 && from.length != 0 && to.length != 0) {
 	    updateL3Panel('<h1>Connecting...</h1>', false);
-	    variant_search_param = JSON.stringify ({
-            "chr": chr.toString(),
-            "start": from.toString(),
-            "end": to.toString(),
-            "alt": "C",
-            "samples": sampleArray
-        })
+	    disableL3(true);
 Ext.Ajax.request({
         url: "http://localhost:40083/variant/search",
         method: 'POST',
@@ -690,24 +705,27 @@ Ext.Ajax.request({
             if (typeof result === "undefined") {
 		exportTable = variantTable;
                 exportTable += '<tr><td colspan="10">Successful connection to variant/search but no result return</td></tr></table></body>';
-                updateL3Panel(table, false);
+                updateL3Panel(exportTable, false); //l3todo: this was table, but I feels like this should be exportTable??
             } else {
             fromL3Variant(result);
-	    /*variant_search_param = JSON.stringify ({
+	    Ext.getCmp('excelButton').enable();
+            };
+	    enableL3(false);
+        console.error("this is variant search params");
+	console.error(JSON.stringify({
             "chr": chr.toString(),
             "start": from.toString(),
             "end": to.toString(),
             "alt": "C",
             "samples": sampleArray
-        })*/};
-        console.error("this is variant search params");
-	console.error(variant_search_param);
+        }));
         },
         failure: function (result, request) { //the given result from the server is already in html form!
             //getSummaryStatisticsComplete(result);
             exportTable = 'CGDB API variant/search connection failure';//'<tr><td colspan="10">CGDB API variant/search connection failure</td></tr></table></body>';       
             updateL3Panel(exportTable, false);
             //l3PluginPanel.body.unmask();
+	    enableL3(false);
         },
         //contentType: "application/json", //headers: {"Content-Type" : "application/json"},//{'X-Requested-With' : 'XMLHttpRequest'},
         timeout: '300000',
@@ -754,7 +772,7 @@ Ext.Ajax.request({
 		emptyText: 'uniqueStudyInOneWord',
 		allowBlank: true
 	    },
-            {
+            {   id: 'mutationButton',
 		text: 'Import Gene Mutation',
 		listeners: {
 			click: function () {
@@ -771,7 +789,8 @@ Ext.Ajax.request({
         } else if (variantArray.length == 0) {
 	    console.error("Though samples found, no available variants, import procedure stopped");
             Ext.MessageBox.alert('Invalid input', 'No available variants, import procedure stopped');
-	} else {		
+	} else {	
+	disableL3(true);	
 	console.error("This is the params for import gene");
 	l3PluginPanel.body.mask("Importing Samples..", 'x-mask-loading');
 	console.error("Ouch! you want to import!");
@@ -783,20 +802,21 @@ Ext.Ajax.request({
         "samples" : filterParamsArray
         }));
         Ext.Ajax.request({
-        url: "http://localhost:40083/transmart/import_gene_mutation",//import", ///pageInfo.basePath+"/chart/basicStatistics",
+        url: "http://localhost:40083/transmart/import", //_gene_mutation",//import", ///pageInfo.basePath+"/chart/basicStatistics",
         method: 'POST',
         success: function (result, request) {
             //getSummaryStatisticsComplete(result);
             l3PluginPanel.body.unmask();
 	    console.error("Sample import finish, Variants import starts");
-	    console.error("This is the passed params");
-	    Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples/variants on the left, click no to stay in the page.', function(e) {
+	    Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples/mutationss on the left, click No to stay in the page.', function(e) {
 		if (e == 'yes') location.reload()});//importL3Variants (); //l3todo: write this import function
+	    enableL3(true);
         },
         failure: function (result, request) {
             //getSummaryStatisticsComplete(result);
             console.error("Cannot import the samples to nevigate, so will stop import variants as well");
             l3PluginPanel.body.unmask();
+	    enableL3(true);
         },
         timeout: '300000',
         jsonData: JSON.stringify({
@@ -809,9 +829,10 @@ Ext.Ajax.request({
        });
 	}				   }
 			   }
-	    },
+	    } ,
+/*
 //start of import vcf
-{   
+{   		id: 'vcfButton',
                 text: 'Import Gene Variants',
                 listeners: {
                         click: function () {
@@ -829,6 +850,7 @@ Ext.Ajax.request({
             console.error("Though samples found, no available variants, import procedure stopped");
             Ext.MessageBox.alert('Invalid input', 'No available variants, import procedure stopped');
         } else {                
+	disableL3(true);
         console.error("This is the params for import gene");
         l3PluginPanel.body.mask("Importing Samples..", 'x-mask-loading');
         console.error("Ouch! you want to import!");
@@ -847,13 +869,16 @@ Ext.Ajax.request({
             l3PluginPanel.body.unmask();
             console.error("Sample import finish, Variants import starts");
             console.error("This is the passed params");
-            Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples/variants on the left, click no to stay in the page.', function(e) {
+            Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples/variants on the left, click Nm to stay in the page.', function(e) {
                 if (e == 'yes') location.reload()});//importL3Variants (); //l3todo: write this import function
+	    enableL3(true);
         },
         failure: function (result, request) {
             //getSummaryStatisticsComplete(result);
             console.error("Cannot import the samples to nevigate, so will stop import variants as well");        
+    var table = sampleTable;
             l3PluginPanel.body.unmask();
+	    enableL3(true);
         },
         timeout: '300000',
         jsonData: JSON.stringify({
@@ -868,8 +893,10 @@ Ext.Ajax.request({
                            }
             }
 //end of import vcf
+*/
+/*
 ,
-	    {
+	    {   id: 'browserButton',
 		text: 'Import to genome browser',
 		listeners: {
 		click: function() {
@@ -885,6 +912,7 @@ Ext.Ajax.request({
 		console.error("You need to have the vcf file to import");
 		Ext.MessageBox.alert('Invalid input','You need to have the vcf file to import');
 		} else {
+		disableL3(true);
 		console.error("You want to import to browswer");
 	console.error(JSON.stringify({
         "study_name" : studyName,
@@ -903,11 +931,13 @@ Ext.Ajax.request({
 	    Ext.MessageBox.alert('success', 'add the track link: http://localhost:58080/hubDirectory/hub.txt to genome browser');
             console.error("Import to genome browser finished");
             //location.reload();//importL3Variants (); //l3todo: write this import function
+	    enableL3(true);
         },
         failure: function (result, request) {
             //getSummaryStatisticsComplete(result);
             Ext.MessageBox.alert('failure', 'Cannot import vcf to browser');
             l3PluginPanel.body.unmask();
+	    enableL3(true);
         },
         timeout: '300000',
         jsonData: JSON.stringify({
@@ -922,13 +952,17 @@ Ext.Ajax.request({
 		}
 
 			    }
-	    },
+	    },*/
 	    {
-		
+	    id: 'excelButton',	
             // xtype: 'button', // default for Toolbars, same as 'tbbutton'
             text: 'Export To Excel',
             listeners: {
                 click: function () {
+			    if (variantArray.length == 0) {
+            console.error("Though samples found, no available variants, import procedure stopped");
+            Ext.MessageBox.alert('Invalid input', 'No available variants, import procedure stopped');
+        } else {	    disableL3(true);
                             //console.error(exportTable);
                             var a = document.createElement('a');
                             a.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'
@@ -942,7 +976,9 @@ Ext.Ajax.request({
 			    }
                             document.body.appendChild(a);
                             a.click();
-                            jQuery(a).remove();             
+                            jQuery(a).remove();   
+			    enableL3(true);          
+		}
                 }
             }
             
@@ -971,35 +1007,43 @@ Ext.Ajax.request({
             //fieldLabel: 'chr'
             //allowBlank: false
         },
-	{
+	{  id: 'filterButton',
            xtype: 'button',
            text: 'submit',
            listeners: {
 		click: function() {
+    disableL3(true);
 //start of click function
+    
     console.error("you want to upload the group of data!");
     var ageLeft = Ext.getCmp('ageLeft').getValue();
     var ageRight = Ext.getCmp('ageRight').getValue();
     var sampleFilters = [];
     sampleArray = [];
+    variantArray = [];
     if (ageLeft.length != 0) {
 	sampleFilters.push(["age", ">=".concat(ageLeft)]);
     }
     if (ageRight.length != 0) {
         sampleFilters.push(["age", "<".concat(ageRight)]);
     }
-        console.error("This is sample search param");
+        console.error("This is sample search param when you click the submit button");
+	console.error(JSON.stringify({
+        "samples" : filterParamsArray,
+        "filters" : sampleFilters
+    }));
     Ext.Ajax.request({
         url: "http://localhost:40083/transmart/sample_search",
         method: 'POST',
         success: function (result, request) {
-		tmpTable = sampleTable;
+		sampleArray = [];
+		tmpTable = '';
             if ("undefined" === typeof result ) {
                 tmpTable += '<tr><td colspan="10">Successful connection to result/search but no result return</td></tr></table></body>';
-                exportTable = tmpTable;
+                exportTable = tmpTable; //l3todo:as export to excel should only work after submit of chr from to are entered, I can disable them before.
                 updateL3Panel(tmpTable, false);
             } else {
-		console.error("This is the result from sampe search");
+		console.error("This is the result from sample search");
 		console.error(result);
                     var obj = jQuery.parseJSON(result.responseText);
                     for (i = 0; i < obj.length; i++) {
@@ -1010,15 +1054,17 @@ Ext.Ajax.request({
     console.error(sampleArray);
                     tmpTable += '<h1>this is the sample size after filter: ' + sampleArray.length.toString() + ' </h1>';
     //pretent that I update the table with the given obj results
-    exportTable = tmpTable;
+    exportTable = tmpTable;//l3todo:as export to excel should only work after submit of chr from to are entered, I can disable them before.
     updateL3Panel(tmpTable,false);}
+    enableL3(false);
         },
         failure: function (result, request) { //the given result from the server is already in html form!
-            tmpTable = sampleTable;
+            tmpTable = '';
             //getSummaryStatisticsComplete(result);
 	    tmpTable += '<tr><td colspan="10">CGDB API sample/search connection failure</td></tr></table></body>';
             updateL3Panel(tmpTable, false);
             //l3PluginPanel.body.unmask();
+	    enableL3(false);
         },
         //contentType: "application/json", //headers: {"Content-Type" : "application/json"},//{'X-Requested-With' : 'XMLHttpRequest'},
         timeout: '300000',
@@ -1026,7 +1072,7 @@ Ext.Ajax.request({
         jsonData: JSON.stringify({
         "samples" : filterParamsArray,
         "filters" : sampleFilters
-    })//sample_search_param
+    })
     })
 
 //end of click function
@@ -1046,6 +1092,8 @@ Ext.Ajax.request({
         collapsible: true,
         listeners: {
             activate: function (p) {
+		console.error("I am activated l3PluginPanel! Do I think that the block changes? Anwser:");
+		console.error(p);
                 if (isSubsetQueriesChanged(p.subsetQueries)) {
                     p.body.mask("Loading... l3plugin", 'x-mask-loading');
 		    updateL3Panel('<h1>Step 1: drag the filter concept into Comparison block<br></h1><h1>Step 2: enter the chr, from, to index and submit<br></h1><h1>Step 3: Import to Nevigate Terms with a study name, import to genome browser with a track name, or export to excel</h1>',false)
@@ -3387,7 +3435,8 @@ function getSummaryGridData() {
     });
 }
 function getL3Statistics() {
-
+    console.error("I enter getL3Statistics");
+    Ext.getCmp('excelButton').disable();
     resultsTabPanel.body.mask("Loading ..", 'x-mask-loading');
     if (!(GLOBAL.CurrentSubsetIDs[1]) && !(GLOBAL.CurrentSubsetIDs[2])) {
         Ext.Msg.alert('Subsets are unavailable.',
@@ -3395,10 +3444,11 @@ function getL3Statistics() {
         resultsTabPanel.body.unmask();
         return;
     }
-
     gridL3store = new Ext.data.JsonStore({
         url: pageInfo.basePath+'/chart/analysisGrid',//'http://localhost:40083/variant/search', //pageInfo.basePath+'/chart/analysisGrid'
     });
+    console.error("this is after I create gridL3store");
+    console.error(gridL3store);
     gridL3store.on('load', storeL3oaded);
     var myparams = Ext.urlEncode({
         concept_key: "",
@@ -3411,6 +3461,8 @@ function getL3Statistics() {
             resultsTabPanel.body.unmask();
         }
     });
+    console.error("This is gridstore after loaded");
+    console.error(gridL3store);
 }
 
 
@@ -3421,8 +3473,6 @@ function storeL3oaded(jsonStore, rows, paramsObject) {
     filterParamsArray = [];
     sampleArray = [];
     variantArray = [];
-    sample_search_param = [];
-    variant_search_param = [];
     var fields = gridL3store.reader.meta.fields;
     //console.error(fields);
     var sampleId = gridL3store.reader.jsonData.rows;
@@ -3431,6 +3481,8 @@ function storeL3oaded(jsonStore, rows, paramsObject) {
     }
     console.error("This is the sample array after dragging");
     console.error(filterParamsArray);
+    console.error("This is the gridL3store");
+    console.error(gridL3store);
     updateL3Panel("<h1>this is the sample size before filter: ".concat(sampleId.length.toString()).concat("</h1>"), false);
     /*
     for (i = 0; i < fields.length; i++) {
@@ -3462,50 +3514,10 @@ function storeL3oaded(jsonStore, rows, paramsObject) {
 	//console.error(fields[i].header.concat(" is not"));
     }
     */
-    //console.error(filterParamsArray);
-/*l3test: start of filter request*/
-    /*var tmpTable = sampleTable;
-    sample_search_param = JSON.stringify({
-            "filter": filterParamsArray
-    });*/
-    /*Ext.Ajax.request({
-        url: "http://localhost:40083/sample/search",
-        method: 'POST',
-        success: function (result, request) {
-	console.error("This is sample search param");
-	console.error(sample_search_param);
-            if ("undefined" === typeof result ) {
-                tmpTable += '<tr><td colspan="10">Successful connection to result/search but no result return</td></tr></table></body>';
-		exportTable = tmpTable;
-		updateL3Panel(tmpTable, false);
-            } else {
-		    var obj = jQuery.parseJSON(result.responseText);
-    		    for (i = 0; i < obj.length; i++) {
-        		    sampleArray.push(obj[i].id);
-   		     }
-    //result parsed
-    //console.error(sampleArray)
-    		    tmpTable += '<h1>this is the sample size after filter: ' + sampleArray.length.toString() + ' </h1>';
-    //pretent that I update the table with the given obj results
-    exportTable = tmpTable;
-    updateL3Panel(tmpTable,false);}
-        },
-        failure: function (result, request) { //the given result from the server is already in html form!
-            //getSummaryStatisticsComplete(result);
-                tmpTable += '<tr><td colspan="10">CGDB API sample/search connection failure</td></tr></table></body>';
-            updateL3Panel(tmpTable, false);
-            //l3PluginPanel.body.unmask();
-        },
-        //contentType: "application/json", //headers: {"Content-Type" : "application/json"},//{'X-Requested-With' : 'XMLHttpRequest'},
-        timeout: '300000',
-        //dataType: "json",
-        jsonData: sample_search_param 
-    })*/
 }
 /*
 function fromL3Sample(result) {
     var obj = jQuery.parseJSON(result.responseText);
-    var table = sampleTable;
     for (i = 0; i < obj.length; i++) {
 	resultArray.push(obj[i].id);
     }
