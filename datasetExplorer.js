@@ -2,11 +2,9 @@ function disableL3(exportButton) {
     console.error("Disabling everything now");
     Ext.getCmp('filterButton').disable();
     Ext.getCmp('chrButton').disable();
-    Ext.getCmp('vcfButton').disable();
-    Ext.getCmp('browserButton').disable();
-    Ext.getCmp('mutationButton').disable();
     if (exportButton) {
 	Ext.getCmp('excelButton').disable();
+	Ext.getCmp('mutationButton').disable();
     }
 }
 
@@ -14,11 +12,9 @@ function enableL3(exportButton) {
     console.error("Enabling everything now");
     Ext.getCmp('filterButton').enable();
     Ext.getCmp('chrButton').enable();
-    Ext.getCmp('vcfButton').enable();
-    Ext.getCmp('browserButton').enable();
-    Ext.getCmp('mutationButton').enable();
     if (exportButton) {
 	Ext.getCmp('excelButton').enable();
+	Ext.getCmp('mutationButton').enable();
     }
 }
 
@@ -495,6 +491,7 @@ Ext.onReady(function () {
         ]
     });
 
+
     // ************
     // Data Exports
     // ************
@@ -706,11 +703,11 @@ Ext.Ajax.request({
 		exportTable = variantTable;
                 exportTable += '<tr><td colspan="10">Successful connection to variant/search but no result return</td></tr></table></body>';
                 updateL3Panel(exportTable, false); //l3todo: this was table, but I feels like this should be exportTable??
+		enableL3(false);
             } else {
             fromL3Variant(result);
-	    Ext.getCmp('excelButton').enable();
+	    enableL3(true);
             };
-	    enableL3(false);
         console.error("this is variant search params");
 	console.error(JSON.stringify({
             "chr": chr.toString(),
@@ -773,7 +770,7 @@ Ext.Ajax.request({
 		allowBlank: true
 	    },
             {   id: 'mutationButton',
-		text: 'Import Gene Mutation',
+		text: 'Import Variants',
 		listeners: {
 			click: function () {
 	var studyName = Ext.getCmp('studyNameField').getValue();
@@ -792,7 +789,7 @@ Ext.Ajax.request({
 	} else {	
 	disableL3(true);	
 	console.error("This is the params for import gene");
-	l3PluginPanel.body.mask("Importing Samples..", 'x-mask-loading');
+	l3PluginPanel.body.mask("Importing variants..", 'x-mask-loading');
 	console.error("Ouch! you want to import!");
 	console.error(JSON.stringify({
         "study_name" : studyName,
@@ -805,15 +802,14 @@ Ext.Ajax.request({
         url: "http://localhost:40083/transmart/import", //_gene_mutation",//import", ///pageInfo.basePath+"/chart/basicStatistics",
         method: 'POST',
         success: function (result, request) {
-            //getSummaryStatisticsComplete(result);
             l3PluginPanel.body.unmask();
 	    console.error("Sample import finish, Variants import starts");
-	    Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples/mutationss on the left, click No to stay in the page.', function(e) {
+	    Ext.MessageBox.alert('success', 'add the track link: http://localhost:58080/hubDirectory/hub.txt to genome browser');
+	    Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples, vcf and mutations on the left, click No to stay in the page.', function(e) {
 		if (e == 'yes') location.reload()});//importL3Variants (); //l3todo: write this import function
 	    enableL3(true);
         },
         failure: function (result, request) {
-            //getSummaryStatisticsComplete(result);
             console.error("Cannot import the samples to nevigate, so will stop import variants as well");
             l3PluginPanel.body.unmask();
 	    enableL3(true);
@@ -1060,7 +1056,6 @@ Ext.Ajax.request({
         },
         failure: function (result, request) { //the given result from the server is already in html form!
             tmpTable = '';
-            //getSummaryStatisticsComplete(result);
 	    tmpTable += '<tr><td colspan="10">CGDB API sample/search connection failure</td></tr></table></body>';
             updateL3Panel(tmpTable, false);
             //l3PluginPanel.body.unmask();
@@ -1094,23 +1089,26 @@ Ext.Ajax.request({
             activate: function (p) {
 		console.error("I am activated l3PluginPanel! Do I think that the block changes? Anwser:");
 		console.error(p);
-                if (isSubsetQueriesChanged(p.subsetQueries)) {
+		console.error(Ext.get("l3PluginPanel"));
+                if (isSubsetQueriesChanged(p.subsetQueries) || !Ext.get('l3PluginPanel')) {
                     p.body.mask("Loading... l3plugin", 'x-mask-loading');
 		    updateL3Panel('<h1>Step 1: drag the filter concept into Comparison block<br></h1><h1>Step 2: enter the chr, from, to index and submit<br></h1><h1>Step 3: Import to Nevigate Terms with a study name, import to genome browser with a track name, or export to excel</h1>',false)
                     runAllQueries(getL3Statistics, p);
                     activateTabResults();
                     onWindowResize();
                     p.body.unmask();
-                }
+                } else {
+		    getL3Statistics();
+		}
             },
             deactivate: function() {
                 resultsTabPanel.tools.help.dom.style.display = "none";
             },
-            /*'afterLayout': {
+            'afterLayout': {
                 fn: function (el) {
                     onWindowResize();
                 }
-            }*/
+            },
 	'render': function() {
 	    l3tbar.render(l3PluginPanel.tbar);
 	    l3bbar.render(l3PluginPanel.tbar);
@@ -3364,7 +3362,6 @@ function getSummaryStatistics() {
     });
 }
 
-
 function getSummaryStatisticsComplete(result, request) {
     resultsTabPanel.setActiveTab('analysisPanel');
     updateAnalysisPanel(result.responseText, false);
@@ -3434,9 +3431,11 @@ function getSummaryGridData() {
         }
     });
 }
+
 function getL3Statistics() {
     console.error("I enter getL3Statistics");
     Ext.getCmp('excelButton').disable();
+    Ext.getCmp('mutationButton').disable();
     resultsTabPanel.body.mask("Loading ..", 'x-mask-loading');
     if (!(GLOBAL.CurrentSubsetIDs[1]) && !(GLOBAL.CurrentSubsetIDs[2])) {
         Ext.Msg.alert('Subsets are unavailable.',
@@ -3444,6 +3443,30 @@ function getL3Statistics() {
         resultsTabPanel.body.unmask();
         return;
     }
+
+//l3todo
+    Ext.Ajax.request({
+        url: pageInfo.basePath+"/chart/basicStatistics",
+        method: 'POST',
+        success: function (result, request) {
+	    console.error("success summay");
+            //getSummaryStatisticsComplete(result);
+            //analysisPanel.body.unmask();
+        },
+        failure: function (result, request) {
+            //getSummaryStatisticsComplete(result);
+            console.error("Cannot get Summary Statistics :(");
+            //analysisPanel.body.unmask();
+        },
+        timeout: '300000',
+        params: Ext.urlEncode({
+            charttype: "basicstatistics",
+            concept_key: "",
+            result_instance_id1: GLOBAL.CurrentSubsetIDs[1],
+            result_instance_id2: GLOBAL.CurrentSubsetIDs[2]
+        }) // or a URL encoded string
+    });
+//l3todo
     gridL3store = new Ext.data.JsonStore({
         url: pageInfo.basePath+'/chart/analysisGrid',//'http://localhost:40083/variant/search', //pageInfo.basePath+'/chart/analysisGrid'
     });
@@ -3461,10 +3484,27 @@ function getL3Statistics() {
             resultsTabPanel.body.unmask();
         }
     });
-    console.error("This is gridstore after loaded");
-    console.error(gridL3store);
+    gridstore = new Ext.data.JsonStore({
+        url: pageInfo.basePath+'/chart/analysisGrid'
+    });
+
+    gridstore.on('load', storeL4oaded);
+
+
+    gridstore.load({
+        params: myparams,
+        callback: function () {
+            //resultsTabPanel.body.unmask();
+        }
+    });    
 }
 
+function storeL4oaded(jsonStore) {
+    console.error("Here is the tester");
+    console.error(gridstore);
+    console.error(gridL3store);
+    console.error(gridstore === gridL3store);
+}
 
 function storeL3oaded(jsonStore, rows, paramsObject) {
     /*var sampleRows = gridL3store.reader.jsonData.rows;
@@ -3547,6 +3587,8 @@ function fromL3Variant(result) {
     table += "</table></body>";
     if (obj.length == 0) {
 	table += "<h1>No result found. Nothing to display</h1>";
+	disableL3(true);
+	enableL3(false);
     } else {
 	variantArray = obj; //this is to show that successfully accept the variants
     } 
