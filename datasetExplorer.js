@@ -804,8 +804,8 @@ Ext.Ajax.request({
         success: function (result, request) {
             l3PluginPanel.body.unmask();
 	    console.error("Sample import finish, Variants import starts");
-	    Ext.MessageBox.alert('success', 'add the track link: http://localhost:58080/hubDirectory/hub.txt to genome browser');
-	    Ext.MessageBox.confirm('Confirm', 'Click Yes to refresh the page and you will see samples, vcf and mutations on the left, click No to stay in the page.', function(e) {
+	    //Ext.MessageBox.alert('success', 'add the track link: http://localhost:58080/hubDirectory/hub.txt to genome browser');
+	    Ext.MessageBox.confirm('Confirm', 'Import success. You can add the track link: http://localhost:58080/hubDirectory/hub.txt to genome browser to view the variants. Click Yes to refresh the page and you will see samples, vcf and mutations on the left, click No to stay in the page.', function(e) {
 		if (e == 'yes') location.reload()});//importL3Variants (); //l3todo: write this import function
 	    enableL3(true);
         },
@@ -3443,15 +3443,55 @@ function getL3Statistics() {
         resultsTabPanel.body.unmask();
         return;
     }
-
+    enableL3(false);
 //l3todo
     Ext.Ajax.request({
         url: pageInfo.basePath+"/chart/basicStatistics",
         method: 'POST',
         success: function (result, request) {
 	    console.error("success summay");
-            //getSummaryStatisticsComplete(result);
-            //analysisPanel.body.unmask();
+	    console.error(result.responseText);
+            var res = result.responseText;//getSummaryStatisticsComplete(result);
+	    var reg = "Query Summary for Subset ";
+	    var sub1 = "";
+	    var sub2 = ""; 
+	   if (res.search(reg.concat("1")) != -1) {
+                if (res.search(/Query Summary for Subset 1.*\\Public Studies\\CGDB\\.+\\<b>\)<\/b><\/td><\/tr><\/table>/) == -1) console.error("Oh no this fails");
+                else {console.error("This actually works");
+			sub1 = "cgdb";
+			}
+
+	    } else sub1 = "empty";
+            if (res.search(reg.concat("2")) != -1) {
+                if (res.search(/Query Summary for Subset 2.*\\Public Studies\\CGDB\\.+\\<b>\)<\/b><\/td><\/tr><\/table>/) == -1) console.error("Oh no this fails");
+                else {console.error("This actually works");
+			sub2 = "cgdb";
+			}
+            } else sub2 = "empty";
+	    if (sub1 && sub2) {	
+		console.error("Only this situation should it work");
+	gridL3store = new Ext.data.JsonStore({
+        	url: pageInfo.basePath+'/chart/analysisGrid',//'http://localhost:40083/variant/search', //pageInfo.basePath+'/chart/analysisGrid'
+	    });
+	    console.error("this is after I create gridL3store");
+	    console.error(gridL3store);
+ 	   gridL3store.on('load', storeL3oaded);
+	    var myparams = Ext.urlEncode({
+        	concept_key: "",
+    	    result_instance_id1: GLOBAL.CurrentSubsetIDs[1],
+    	    result_instance_id2: GLOBAL.CurrentSubsetIDs[2]
+    	});
+    	gridL3store.load({
+       	 params:  myparams,
+       	 callback:  function () {
+       	     resultsTabPanel.body.unmask();
+       	 }
+   	 });
+	    } else {
+		updateL3Panel("<h1>Please using studies from CGDB folder</h1>", false);
+		resultsTabPanel.body.unmask();
+		disableL3(true);
+	    }
         },
         failure: function (result, request) {
             //getSummaryStatisticsComplete(result);
@@ -3467,7 +3507,8 @@ function getL3Statistics() {
         }) // or a URL encoded string
     });
 //l3todo
-    gridL3store = new Ext.data.JsonStore({
+
+    /*gridL3store = new Ext.data.JsonStore({
         url: pageInfo.basePath+'/chart/analysisGrid',//'http://localhost:40083/variant/search', //pageInfo.basePath+'/chart/analysisGrid'
     });
     console.error("this is after I create gridL3store");
@@ -3483,27 +3524,7 @@ function getL3Statistics() {
         callback:  function () {
             resultsTabPanel.body.unmask();
         }
-    });
-    gridstore = new Ext.data.JsonStore({
-        url: pageInfo.basePath+'/chart/analysisGrid'
-    });
-
-    gridstore.on('load', storeL4oaded);
-
-
-    gridstore.load({
-        params: myparams,
-        callback: function () {
-            //resultsTabPanel.body.unmask();
-        }
-    });    
-}
-
-function storeL4oaded(jsonStore) {
-    console.error("Here is the tester");
-    console.error(gridstore);
-    console.error(gridL3store);
-    console.error(gridstore === gridL3store);
+    });*/
 }
 
 function storeL3oaded(jsonStore, rows, paramsObject) {
@@ -3516,14 +3537,19 @@ function storeL3oaded(jsonStore, rows, paramsObject) {
     var fields = gridL3store.reader.meta.fields;
     //console.error(fields);
     var sampleId = gridL3store.reader.jsonData.rows;
+    console.error("Test in storeL3oad");
     for (i = 0; i < sampleId.length; i++) {
 	filterParamsArray.push(sampleId[i].patient);
+	
     }
+    filterParamsArray = filterParamsArray.filter(function (id) {
+	return id.indexOf('_') == -1;
+    });
     console.error("This is the sample array after dragging");
     console.error(filterParamsArray);
     console.error("This is the gridL3store");
     console.error(gridL3store);
-    updateL3Panel("<h1>this is the sample size before filter: ".concat(sampleId.length.toString()).concat("</h1>"), false);
+    updateL3Panel("<h1>this is the sample size before filter: ".concat(filterParamsArray.length.toString()).concat("</h1>"), false);
     /*
     for (i = 0; i < fields.length; i++) {
 	if (fields[i].header.indexOf("<=age<") !== -1) { //detect age filter
